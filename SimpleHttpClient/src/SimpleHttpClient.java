@@ -48,7 +48,7 @@ public class SimpleHttpClient {
             }
             in.close();
 
-            System.out.println(response.toString());
+            System.out.println(response);
         } catch (IOException e) {
             e.printStackTrace();
         }

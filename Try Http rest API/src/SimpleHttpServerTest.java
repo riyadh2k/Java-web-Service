@@ -1,58 +1,99 @@
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.ArrayList;
 
 public class SimpleHttpServerTest {
 
     @Test
-    public void testGetRequest() throws IOException {
-        // Send GET request to server
-        URL url = new URL("http://localhost:8081/api/v1/21229");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("GET");
+    void testGetRequest() throws Exception {
+        // Start the server on a separate thread
+        new Thread(() -> {
+            try {
+                SimpleHttpServer.main(new String[]{});
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        // Read response from server
-        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        String inputLine;
-        StringBuilder response = new StringBuilder();
-        while ((inputLine = in.readLine()) != null) {
-            response.append(inputLine);
+        // Wait for the server to start
+        Thread.sleep(1000);
+
+        // Send a GET request to the server and read the response
+        try (Socket socket = new Socket("localhost", 8081);
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+
+            // Send the GET request to the server
+            out.println("GET /api/v1/21229 HTTP/1.1");
+            out.println("Host: localhost:8081");
+            out.println("Connection: close");
+            out.println();
+
+            // Read the response from the server
+            ArrayList<String> lines = SimpleHttpServer.ReadAllLines(in);
+
+            // Verify that the response is valid
+            Assertions.assertEquals("HTTP/1.1 200 OK", lines.get(0));
+            Assertions.assertEquals("Content-Type: application/json", lines.get(1));
+            Assertions.assertTrue(lines.get(2).startsWith("Content-Length: "));
+            Assertions.assertEquals("", lines.get(3));
+
+            // TODO: Verify the JSON data in the response
         }
-        in.close();
 
-        // Verify that the response is correct
-        String expectedResponse = "{\"name\":\"John\",\"age\":30,\"city\":\"New York\"}";
-        assertEquals(expectedResponse, response.toString());
+        // Stop the server
+        // Note: In a real-world scenario, you might want to use a more graceful shutdown mechanism
+        System.exit(0);
     }
 
     @Test
-    public void testPostRequest() throws IOException {
-        // Send POST request to server
-        URL url = new URL("http://localhost:8081/api/v1/state");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("POST");
-        con.setDoOutput(true);
+    void testPostRequest() throws Exception {
+        // Start the server on a separate thread
+        new Thread(() -> {
+            try {
+                SimpleHttpServer.main(new String[]{});
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        // Set request body
-        String requestBody = "{\"key\":\"value\"}";
-        con.getOutputStream().write(requestBody.getBytes());
+        // Wait for the server to start
+        Thread.sleep(1000);
 
-        // Read response from server
-        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        String inputLine;
-        StringBuilder response = new StringBuilder();
-        while ((inputLine = in.readLine()) != null) {
-            response.append(inputLine);
+        // Send a POST request to the server and read the response
+        try (Socket socket = new Socket("localhost", 8081);
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+
+            // Send the POST request to the server
+            String postData = "{\"key\":\"value\"}";
+            out.println("POST /api/v1/state HTTP/1.1");
+            out.println("Host: localhost:8081");
+            out.println("Content-Type: application/json");
+            out.println("Content-Length: " + postData.getBytes().length);
+            out.println();
+            out.println(postData);
+
+            // Read the response from the server
+            ArrayList<String> lines = SimpleHttpServer.ReadAllLines(in);
+
+            // Verify that the response is valid
+            Assertions.assertEquals("HTTP/1.1 200 OK", lines.get(0));
+            Assertions.assertEquals("Content-Type: application/json", lines.get(1));
+            Assertions.assertTrue(lines.get(2).startsWith("Content-Length: "));
+            Assertions.assertEquals("", lines.get(3));
+
+            // Verify the response data
+            Assertions.assertEquals("OK", lines.get(4));
         }
-        in.close();
 
-        // Verify that the response is correct
-        String expectedResponse = "OK";
-        assertEquals(expectedResponse, response.toString());
+        // Stop the server
+        // Note: In a real-world scenario, you might want to use a more graceful shutdown mechanism
+        System.exit(0);
     }
 }

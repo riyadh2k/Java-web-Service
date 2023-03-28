@@ -1,3 +1,4 @@
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
@@ -110,14 +111,14 @@ public class SimpleHttpServer {
         }
     }
 
-    public static void storeData(String data){
+    public static <JSON> void storeData(String data) {
         String jsonFilePath = "/Users/shabenur/Desktop/Java Web Service/Try Http RestAPI/Try Http rest API/src/data.json";
 
         // Parse the existing JSON data
-        JSONObject jsonData = null;
+        JSON dataJson = null;
         try {
             String jsonContent = new String(Files.readAllBytes(Paths.get(jsonFilePath)));
-            jsonData = (JSONObject) JSONValue.parse(jsonContent);
+            dataJson = (JSON) JSONValue.parse(jsonContent);
         } catch (IOException e) {
             // Handle file read error
             e.printStackTrace();
@@ -128,20 +129,27 @@ public class SimpleHttpServer {
         postData.put("data", data);
 
         // Merge the POST data into the existing JSON data
-        if (jsonData == null) {
-            jsonData = new JSONObject();
+        if (dataJson == null) {
+            dataJson = (JSON) postData;
+        } else if (dataJson instanceof JSONObject) {
+            JSONArray newData = new JSONArray();
+            newData.add(dataJson);
+            newData.add(postData);
+            dataJson = (JSON) newData;
+        } else if (dataJson instanceof JSONArray) {
+            ((JSONArray) dataJson).add(postData);
         }
-        jsonData.putAll(postData);
 
         // Write the updated JSON data back to the file
         try (FileWriter file = new FileWriter(jsonFilePath)) {
-            file.write(jsonData.toJSONString());
+            file.write(dataJson.toString());
             file.flush();
         } catch (IOException e) {
             // Handle file write error
             e.printStackTrace();
         }
     }
+
 
 
 }
